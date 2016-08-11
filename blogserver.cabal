@@ -1,0 +1,26 @@
+name:                blogserver
+version:             0.1.0.0
+synopsis:            REST API server to serve YAML blog posts
+description:         Please see README.md
+homepage:            https://github.com/ashutoshrishi/blogserver
+license:             BSD3
+license-file:        LICENSE
+author:              Rishi
+maintainer:          ashutoshrishi92@gmail.com
+copyright:           2016 Ashutosh Rishi Ranjan
+category:            Web
+build-type:          Simple
+-- extra-source-files:
+cabal-version:       >=1.10
+
+
+executable blogserver
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+  default-language:    Haskell2010
+
+source-repository head
+  type:     git
+  location: https://github.com/ashutoshrishi/blogserver
