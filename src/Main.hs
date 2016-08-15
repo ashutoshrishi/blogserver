@@ -9,6 +9,7 @@ import qualified Database.Persist as DB
 import qualified Database.Persist.Postgresql as DB
 import           Model
 import           Network.Wai (Middleware)
+import Network.Wai.Middleware.Cors (simpleCors)
 import           Network.Wai.Handler.Warp (defaultSettings)
 import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Network.HTTP.Types.Status (notFound404)
@@ -64,6 +65,7 @@ runServer c = do
 application :: Environment -> ScottyM ()
 application env = do
     middleware (loggingM env)
+    middleware simpleCors
     get "/" (text "Hello, World!")
     get "/posts" getPostsA
     get "/post/slug/:slug" getPostBySlugA

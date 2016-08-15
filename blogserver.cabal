@@ -32,6 +32,7 @@ executable blogserver
                      , time >= 1.5.0.1
                      , transformers >= 0.4.2.0
                      , wai ==3.2.1
+                     , wai-cors ==0.2.5
                      , wai-extra ==3.0.16.1
                      , warp ==3.2.6
 

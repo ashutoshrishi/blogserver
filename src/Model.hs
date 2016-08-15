@@ -57,7 +57,7 @@ insertPost post = runDb (insert post)
 
 getNPosts :: Int -> IO [Entity Post]
 getNPosts n = runDb $
-    selectList ([] :: [Filter Post]) [LimitTo n]
+    selectList ([] :: [Filter Post]) [LimitTo n, Desc PostCreated]
 
 
 getPostBySlug :: String -> IO (Maybe (Entity Post))
