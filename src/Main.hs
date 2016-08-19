@@ -1,12 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
+
+{-|
+Module      : Main
+Description : Present a simple REST API to fetch and add new blog posts.
+Copyright   : (c) Ashutosh Rishi Ranjan, 2016
+Maintainer  : ashutoshrishi92@gmail.com
+Stability   : experimental
+-}
+
 module Main where
 
 import           Control.Monad.IO.Class (liftIO)
-import           Data.Aeson (toJSON, object, (.=), Value (Null))
-import           Data.Monoid (mconcat)
-import           Data.Text
-import qualified Database.Persist as DB
-import qualified Database.Persist.Postgresql as DB
+import           Data.Aeson (object, (.=), Value (Null))
 import           Model
 import           Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors (simpleCors)
@@ -15,6 +20,12 @@ import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Network.HTTP.Types.Status (notFound404)
 import           System.Environment (lookupEnv)
 import           Web.Scotty
+import System.Directory (listDirectory)
+import System.IO.Error (catchIOError)
+import Data.List as List
+import System.FilePath (takeExtension)
+import PostParser
+import Data.Maybe (catMaybes)
 
 
 main :: IO () 
@@ -26,15 +37,18 @@ main = getConfig >>= runServer
 data Config = Config
     { environment :: Environment }
 
+
 data Environment = Development | Production
     deriving (Show, Eq, Read)
 
+
 getConfig :: IO Config 
-getConfig = getEnvironment >>= return . Config
+getConfig = Config <$> getEnvironment
     
 
 getEnvironment :: IO Environment
-getEnvironment = (maybe Development read) <$> lookupEnv "SCOTTY_ENV"
+getEnvironment = maybe Development read <$> lookupEnv "SCOTTY_ENV"
+
         
 -- | Derive Scotty options from the server configuration
 getOptions :: Environment -> IO Options
@@ -91,13 +105,29 @@ getPostBySlugA = do
 
 getPostByIdA :: ActionM ()
 getPostByIdA = do
-    id <- param "id"
-    maybeEnt <- liftIO $ getPostById (read id :: Integer)
+    postId <- param "id"
+    maybeEnt <- liftIO $ getPostById (read postId :: Integer)
     maybe notFoundA json maybeEnt
     
-
 
 notFoundA :: ActionM ()
 notFoundA = do
     status notFound404
     json Null 
+
+
+
+-- * Disk interface
+
+-- | Migrates markdown blog posts from a directory to the Database.
+migrateMarkdown :: FilePath -> IO ()
+migrateMarkdown dir = do
+    files <- catchIOError (listDirectory dir) (\_ -> return [])
+    let postFiles = List.filter ((== ".markdown") . takeExtension) files
+    posts <- catMaybes <$> mapM markdownToPost (List.map (dir ++) postFiles)
+    mapM_ insertPost posts
+    
+    
+
+    
+
