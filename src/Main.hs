@@ -28,7 +28,7 @@ import PostParser
 import Data.Maybe (catMaybes)
 
 
-main :: IO () 
+main :: IO ()
 main = getConfig >>= runServer
 
 
@@ -42,14 +42,14 @@ data Environment = Development | Production
     deriving (Show, Eq, Read)
 
 
-getConfig :: IO Config 
+getConfig :: IO Config
 getConfig = Config <$> getEnvironment
-    
+
 
 getEnvironment :: IO Environment
 getEnvironment = maybe Development read <$> lookupEnv "SCOTTY_ENV"
 
-        
+
 -- | Derive Scotty options from the server configuration
 getOptions :: Environment -> IO Options
 getOptions e = do
@@ -108,12 +108,12 @@ getPostByIdA = do
     postId <- param "id"
     maybeEnt <- liftIO $ getPostById (read postId :: Integer)
     maybe notFoundA json maybeEnt
-    
+
 
 notFoundA :: ActionM ()
 notFoundA = do
     status notFound404
-    json Null 
+    json Null
 
 
 
@@ -122,12 +122,7 @@ notFoundA = do
 -- | Migrates markdown blog posts from a directory to the Database.
 migrateMarkdown :: FilePath -> IO ()
 migrateMarkdown dir = do
-    files <- catchIOError (listDirectory dir) (\_ -> return [])
-    let postFiles = List.filter ((== ".markdown") . takeExtension) files
-    posts <- catMaybes <$> mapM markdownToPost (List.map (dir ++) postFiles)
+    allFiles <- catchIOError (listDirectory dir) (\_ -> return [])
+    let postFiles = List.filter ((== ".markdown") . takeExtension) allFiles
+    posts <- catMaybes <$> mapM (markdownToPost . (dir ++)) postFiles
     mapM_ insertPost posts
-    
-    
-
-    
-

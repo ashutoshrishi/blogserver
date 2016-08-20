@@ -12,7 +12,7 @@
 module Model (
     Post(..), runDb, doMigration,
     -- * interface
-    insertPost, getNPosts, getPostBySlug, getPostById
+    insertPost, getNPosts, getPostBySlug, getPostById, deletePostBySlug
     ) where
 
 import Database.Persist
@@ -37,11 +37,11 @@ Post json
     UniqueSlug slug
     deriving Show
 |]
-    
+
 
 runDb :: SqlPersistM a -> IO a
 runDb query = do
-    let connStr = "host=localhost user=rishi dbname=rishi" 
+    let connStr = "host=localhost user=rishi dbname=rishi"
     runStderrLoggingT $ withPostgresqlPool connStr 10 $ \pool ->
         liftIO $ runSqlPersistMPool query pool
 
@@ -53,6 +53,10 @@ doMigration = runDb (runMigration migrateAll)
 
 insertPost :: Post -> IO (Key Post)
 insertPost post = runDb (insert post)
+
+
+deletePostBySlug :: String -> IO ()
+deletePostBySlug s = runDb $ deleteBy $ UniqueSlug s
 
 
 getNPosts :: Int -> IO [Entity Post]
@@ -79,8 +83,6 @@ toKey i = toSqlKey (fromIntegral (i :: Integer))
 -- main :: IO ()
 -- main = runDb $ do
 --     time <- liftIO getCurrentTime
---     postId <- insert $ Post "Bar" "Second Random content" "bar" time 
+--     postId <- insert $ Post "Bar" "Second Random content" "bar" time
 --     post <- get postId
---     liftIO $ print post    
-
-    
+--     liftIO $ print post
