@@ -14,19 +14,17 @@ data Source = Disk FilePath
 
 migrate :: IO ()
 migrate = do
-    posts <- parseSource (Disk "_posts/")
-    insertPosts posts
+    ps <- parseSource (Disk "_posts/")
+    results <- mapM insertPost ps
+    mapM_ (\(p, r) ->
+               case r of
+                   Nothing ->
+                       putStrLn $ "xxx Post already exists: " ++ postSlug p
+                   Just _ -> putStrLn $ "+++ Inserted: " ++ postSlug p
+          ) (zip ps results)
 
 
 parseSource :: Source -> IO [Post]
 parseSource (Disk dir) = do
     allFiles <- catchIOError (listDirectory dir) (\_ -> return [])
     catMaybes <$> mapM (parsePostFile . (dir ++)) allFiles
-    
-
-
-insertPosts :: [Post] -> IO ()
-insertPosts = mapM_ insertPost 
-
-
-

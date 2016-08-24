@@ -12,7 +12,8 @@
 module Model (
     Post(..), runDb, doMigration,
     -- * interface
-    insertPost, getNPosts, getPostBySlug, getPostById, deletePostBySlug
+    insertPost, getNPosts, getPostBySlug, getPostById, deletePostBySlug,
+    insertPosts
     ) where
 
 import Database.Persist
@@ -51,8 +52,11 @@ doMigration = runDb (runMigration migrateAll)
 
 -- INTERFACE
 
-insertPost :: Post -> IO (Key Post)
-insertPost post = runDb (insert post)
+insertPost :: Post -> IO (Maybe (Key Post))
+insertPost = runDb . insertUnique
+
+insertPosts :: [Post] -> IO [Key Post]
+insertPosts = runDb . insertMany
 
 
 deletePostBySlug :: String -> IO ()
