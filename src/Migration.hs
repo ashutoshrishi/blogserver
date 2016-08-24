@@ -1,26 +1,32 @@
 module Migration ( migrate ) where
 
+import Control.Monad.IO.Class (liftIO)
 import PostParser
 import Model
 import Data.Maybe (catMaybes)
 import System.Directory (listDirectory)
 import System.IO.Error (catchIOError)
+import Types
+import Control.Monad.Trans.State.Lazy (gets)
 
 
--- |All sources that can contain markdown posts.
-data Source = Disk FilePath
-
-
-
-migrate :: IO ()
+migrate :: Server ()
 migrate = do
-    ps <- parseSource (Disk "_posts/")
+    sources <- gets postSources
+    logMsg $ "Attempting migration on sources: " ++ show sources
+    liftIO $ mapM_ migrateFromSource sources
+
+
+migrateFromSource :: Source -> IO ()
+migrateFromSource source = do
+    ps <- parseSource source
     results <- mapM insertPost ps
     mapM_ (\(p, r) ->
                case r of
                    Nothing ->
                        putStrLn $ "xxx Post already exists: " ++ postSlug p
-                   Just _ -> putStrLn $ "+++ Inserted: " ++ postSlug p
+                   Just _ ->
+                       putStrLn $ "+++ Inserted: " ++ postSlug p
           ) (zip ps results)
 
 

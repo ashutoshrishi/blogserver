@@ -20,14 +20,13 @@ import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Network.HTTP.Types.Status (notFound404)
 import Web.Scotty
 import Types
-
--- import Migration
+import Migration
 
 
 main :: IO ()
 main = do
     env <- getEnvironment
-    evalStateT server (ServerState env)
+    evalStateT server (ServerState env [])
 
 
 
@@ -44,6 +43,8 @@ server :: Server ()
 server = do
     env <- gets environment
     opts <- liftIO $ getOptions env
+    getConfig "postconfig.json"
+    migrate
     liftIO $ scottyOpts opts (application env)
 
 
