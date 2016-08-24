@@ -38,6 +38,7 @@ executable blogserver
                      , wai-cors ==0.2.5
                      , wai-extra ==3.0.16.1
                      , warp ==3.2.6
+                     , bytestring ==0.10.6.0
 
 source-repository head
   type:     git
