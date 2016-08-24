@@ -10,17 +10,17 @@ Stability   : experimental
 
 module Main where
 
-import           Control.Monad.IO.Class (liftIO)
-import Control.Monad.Trans.State.Lazy (gets, StateT, evalStateT)
-import           Data.Aeson (object, (.=), Value (Null))
-import           Model
-import           Network.Wai (Middleware)
+import Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.State.Lazy (gets, evalStateT)
+import Data.Aeson (object, (.=), Value (Null))
+import Model
+import Network.Wai (Middleware)
 import Network.Wai.Middleware.Cors (simpleCors)
-import           Network.Wai.Handler.Warp (defaultSettings)
-import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
+import Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Network.HTTP.Types.Status (notFound404)
-import           System.Environment (lookupEnv)
-import           Web.Scotty
+import Web.Scotty
+import Types
+
 -- import Migration
 
 
@@ -28,35 +28,6 @@ main :: IO ()
 main = do
     env <- getEnvironment
     evalStateT server (ServerState env)
-
-
--- |State monad holding the configuration of a running server.
-data ServerState = ServerState
-    { environment :: Environment }
-
--- |Hold the server state over the standard IO monad.
-type Server = StateT ServerState IO
-
-
--- |Represents different environment variables that can be set.
-data Environment = Development | Production
-    deriving (Show, Eq, Read)
-
-
-getEnvironment :: IO Environment
-getEnvironment = maybe Development read <$> lookupEnv "SCOTTY_ENV"
-
-
-
-
--- | Derive Scotty options from the server configuration
-getOptions :: Environment -> IO Options
-getOptions e = do
-    let v = case e of
-                Development -> 1
-                Production -> 0
-    -- For now we are going with default Warp settings
-    return $ Options v defaultSettings
 
 
 
