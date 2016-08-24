@@ -20,12 +20,7 @@ import           Network.Wai.Middleware.RequestLogger (logStdout, logStdoutDev)
 import Network.HTTP.Types.Status (notFound404)
 import           System.Environment (lookupEnv)
 import           Web.Scotty
-import System.Directory (listDirectory)
-import System.IO.Error (catchIOError)
-import Data.List as List
-import System.FilePath (takeExtension)
-import PostParser
-import Data.Maybe (catMaybes)
+-- import Migration
 
 
 main :: IO ()
@@ -114,15 +109,3 @@ notFoundA :: ActionM ()
 notFoundA = do
     status notFound404
     json Null
-
-
-
--- * Disk interface
-
--- | Migrates markdown blog posts from a directory to the Database.
-migrateMarkdown :: FilePath -> IO ()
-migrateMarkdown dir = do
-    allFiles <- catchIOError (listDirectory dir) (\_ -> return [])
-    let postFiles = List.filter ((== ".markdown") . takeExtension) allFiles
-    posts <- catMaybes <$> mapM (markdownToPost . (dir ++)) postFiles
-    mapM_ insertPost posts
