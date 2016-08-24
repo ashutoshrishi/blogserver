@@ -11,6 +11,7 @@ Stability   : experimental
 module Main where
 
 import Control.Monad.IO.Class (liftIO)
+import Control.Monad (when)
 import Control.Monad.Trans.State.Lazy (gets, evalStateT)
 import Data.Aeson (object, (.=), Value (Null))
 import Model
@@ -26,8 +27,7 @@ import Migration
 main :: IO ()
 main = do
     env <- getEnvironment
-    evalStateT server (ServerState env [])
-
+    evalStateT server (initServerState { environment = env })
 
 
 -- | Logging middleware.
@@ -44,7 +44,9 @@ server = do
     env <- gets environment
     opts <- liftIO $ getOptions env
     getConfig "postconfig.json"
-    migrate
+    parseCmdLine
+    shouldMigrate <- gets optRunMigration
+    when shouldMigrate migrate
     liftIO $ scottyOpts opts (application env)
 
 

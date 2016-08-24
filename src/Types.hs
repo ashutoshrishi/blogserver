@@ -1,30 +1,40 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Types
-    ( Server, ServerState(..)
+    ( Server, ServerState(..), initServerState
     -- * Configuration types
     , Environment(..), getEnvironment, getOptions, Source(..)
-    , getConfig
+    , getConfig, parseCmdLine
     , logMsg
 
     ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Control.Applicative (empty)
 import Control.Monad.Trans.State.Lazy (StateT, modify)
 import Network.Wai.Handler.Warp (defaultSettings)
-import System.Environment (lookupEnv)
+import System.Environment (lookupEnv, getArgs)
 import Web.Scotty (Options(..))
-import GHC.Generics
 import Data.Aeson
 import Data.Aeson.Types (typeMismatch)
 import qualified Data.ByteString.Lazy as BL
+import           System.Console.GetOpt
+
 
 
 -- |State monad holding the configuration of a running server.
 data ServerState = ServerState
-    { environment :: Environment
-    , postSources :: [Source] }
+    { environment     :: Environment
+    , postSources     :: [Source]
+    , optRunMigration :: Bool
+    }
+
+
+initServerState :: ServerState
+initServerState = ServerState
+    { environment = Development
+    , postSources = []
+    , optRunMigration = False
+    }
 
 
 -- |Hold the server state over the standard IO monad.
@@ -96,6 +106,29 @@ parseConfigFile :: FilePath -> Server (Maybe ConfigFile)
 parseConfigFile f = do
     confStr <- liftIO $ BL.readFile f
     return $ decode confStr
+
+
+-----------------------------------------------------------------------------
+-- Command Line Options                                                    --
+-----------------------------------------------------------------------------
+
+optDescs :: [OptDescr (ServerState -> ServerState)]
+optDescs =
+    [ Option "m" ["migrate"]
+      ( NoArg (\s -> s { optRunMigration = True }) )
+      "Run post migrations from specified sources."
+    ]
+
+
+parseCmdLine :: Server ()
+parseCmdLine = do
+    argv <- liftIO getArgs
+    case getOpt Permute optDescs argv of
+        (os, _, []) -> mapM_ modify os
+        (_, _, errs) ->
+            do liftIO $ mapM_ putStrLn errs
+               error "Error parsing command line."
+
 
 
 logMsg :: String -> Server ()
