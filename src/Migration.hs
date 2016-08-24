@@ -14,14 +14,14 @@ data Source = Disk FilePath
 
 migrate :: IO ()
 migrate = do
-    posts <- parseSource (Disk "_posts")
+    posts <- parseSource (Disk "_posts/")
     insertPosts posts
 
 
 parseSource :: Source -> IO [Post]
 parseSource (Disk dir) = do
     allFiles <- catchIOError (listDirectory dir) (\_ -> return [])
-    catMaybes <$> mapM parsePostFile allFiles
+    catMaybes <$> mapM (parsePostFile . (dir ++)) allFiles
     
 
 
