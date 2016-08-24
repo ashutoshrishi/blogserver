@@ -11,6 +11,7 @@ Stability   : experimental
 module Main where
 
 import           Control.Monad.IO.Class (liftIO)
+import Control.Monad.Trans.State.Lazy (gets, StateT, evalStateT)
 import           Data.Aeson (object, (.=), Value (Null))
 import           Model
 import           Network.Wai (Middleware)
@@ -24,25 +25,28 @@ import           Web.Scotty
 
 
 main :: IO ()
-main = getConfig >>= runServer
+main = do
+    env <- getEnvironment
+    evalStateT server (ServerState env)
 
 
--- * Configuration
-
-data Config = Config
+-- |State monad holding the configuration of a running server.
+data ServerState = ServerState
     { environment :: Environment }
 
+-- |Hold the server state over the standard IO monad.
+type Server = StateT ServerState IO
 
+
+-- |Represents different environment variables that can be set.
 data Environment = Development | Production
     deriving (Show, Eq, Read)
 
 
-getConfig :: IO Config
-getConfig = Config <$> getEnvironment
-
-
 getEnvironment :: IO Environment
 getEnvironment = maybe Development read <$> lookupEnv "SCOTTY_ENV"
+
+
 
 
 -- | Derive Scotty options from the server configuration
@@ -64,11 +68,12 @@ loggingM Production = logStdout
 
 -- * Main runners
 
-runServer :: Config -> IO ()
-runServer c = do
-    let env = environment c
-    opts <- getOptions env
-    scottyOpts opts (application env)
+-- | Actual scotty server, runs the scotty app which listens on routes.
+server :: Server ()
+server = do
+    env <- gets environment
+    opts <- liftIO $ getOptions env
+    liftIO $ scottyOpts opts (application env)
 
 
 application :: Environment -> ScottyM ()
