@@ -27,7 +27,9 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Time.Clock (UTCTime, getCurrentTime)
 import Model (Post(..))
 import Data.List as List
-import System.FilePath (takeExtension)
+import System.FilePath (takeExtension, takeBaseName)
+import Data.Time.Format
+
 
 
 -- | Determine the parsing action for a given post file `f` and apply it.
@@ -37,6 +39,7 @@ parsePostFile f
     | otherwise = do
           print $ "Cannot determine post type for " ++ f
           return Nothing
+
 
 
 data PostType = MarkdownPost
@@ -67,6 +70,16 @@ makePostFromParsed time (ParsedPost header body) = do
     t <- T.pack <$> List.lookup "title" header
     s <- List.lookup "slug" header
     return $ Post t body s time
+
+
+-- | Slug and creation date information, parsed from the title.
+parseFilePath :: FilePath -> IO (String, UTCTime)
+parseFilePath f = do
+    let nm = takeBaseName f
+    let ds = take 10 nm
+    let slug = drop 11 nm
+    time <- parseTimeM True defaultTimeLocale "%F" ds
+    return (slug, time)
 
 
 -----------------------------------------------------------------------------
