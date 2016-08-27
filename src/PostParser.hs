@@ -15,40 +15,38 @@ o Markdown with Metadata to Blog Post
 
 -}
 
-module PostParser ( markdownToPost, ParsedPost, PostType
-                  , parsePostFile ) where
+module PostParser ( markdownToPost, ParsedPost, parsePostFile ) where
 
 
-import Text.Parsec
-import Text.Parsec.Text
-import Data.Text.IO as TextIO
+import           Control.Monad.IO.Class (liftIO)
+import           Data.List as List
+import Data.Char (toLower)
 import qualified Data.Text as T
-import Control.Monad.IO.Class (liftIO)
-import Data.Time.Clock (UTCTime, getCurrentTime)
-import Model (Post(..))
-import Data.List as List
-import System.FilePath (takeExtension, takeBaseName)
-import Data.Time.Format
-
+import           Data.Text.IO as TextIO
+import           Data.Time.Clock (UTCTime, getCurrentTime)
+import           Data.Time.Format
+import           Model (Post(..))
+import           System.FilePath (takeExtension, takeBaseName)
+import           Text.Parsec
+import           Text.Parsec.Text
 
 
 -- | Determine the parsing action for a given post file `f` and apply it.
 parsePostFile :: FilePath -> IO (Maybe Post)
 parsePostFile f
-    | takeExtension f == ".markdown" = markdownToPost f
+    | takeExtension f == ".markdown" = withPostFile f markdownToPost
     | otherwise = do
           print $ "Cannot determine post type for " ++ f
           return Nothing
 
 
-
-data PostType = MarkdownPost
-
-
-postExtension :: PostType -> String
-postExtension MarkdownPost = ".markdown"
-
-
+-- | Bracket pattern to run an `action` on a post file `pf`, after parsing the
+-- filename for initial header fields (created date and slug), which is passed
+-- along to the action.
+withPostFile :: FilePath -> ([HeaderField] -> FilePath -> IO a) -> IO a
+withPostFile pf action = do
+    let pre = parseFilePath pf
+    action pre pf
 
 -----------------------------------------------------------------------------
 -- Intermediate Types for a simple text Post structure                     --
@@ -67,34 +65,43 @@ type Body = T.Text
 -- default post creation time.
 makePostFromParsed :: UTCTime -> ParsedPost -> Maybe Post
 makePostFromParsed time (ParsedPost header body) = do
+    let makeTime = parseTimeM True defaultTimeLocale "%F"
     t <- T.pack <$> List.lookup "title" header
-    s <- List.lookup "slug" header
-    return $ Post t body s time
+    s <- List.map toLower <$> List.lookup "slug" header
+    c <- case List.lookup "created" header of
+             Just date -> makeTime date
+             Nothing -> return time
+    return $ Post t body s c
+
 
 
 -- | Slug and creation date information, parsed from the title.
-parseFilePath :: FilePath -> IO (String, UTCTime)
-parseFilePath f = do
-    let nm = takeBaseName f
-    let ds = take 10 nm
-    let slug = drop 11 nm
-    time <- parseTimeM True defaultTimeLocale "%F" ds
-    return (slug, time)
-
+parseFilePath :: FilePath -> [HeaderField]
+parseFilePath f =
+    [ ("slug", drop 11 nm)
+    , ("created", take 10 nm)
+    ]
+  where
+    nm = takeBaseName f
 
 -----------------------------------------------------------------------------
 -- Different Parsers                                                       --
 -----------------------------------------------------------------------------
 
 
--- | Transform a blog post written in markdown to the `Model.Post` type.
-markdownToPost :: FilePath -> IO (Maybe Post)
-markdownToPost markfile = do
+-- | Transform a blog post file written in markdown to the `Model.Post`
+-- type. Also takes an initial list of ParsedPost header fields which may have
+-- been derived from elsewhere. These are added to the ones parsed from the
+-- post file header.
+markdownToPost :: [HeaderField] -> FilePath -> IO (Maybe Post)
+markdownToPost pre markfile = do
     postMd <- TextIO.readFile markfile
     time <- liftIO getCurrentTime
     case parse markdownParser markfile postMd of
         Left err -> print err >> return Nothing
-        Right p -> return $ makePostFromParsed time p
+        Right (ParsedPost hds body) -> do
+            let final = ParsedPost (hds ++ pre) body
+            return $ makePostFromParsed time final
 
 
 -----------------------------------------------------------------------------
@@ -105,9 +112,9 @@ markdownToPost markfile = do
 markdownParser :: Parser ParsedPost
 markdownParser = do
     let divider = many1 (char '-') <* spaces
-    divider
+    _ <- divider
     header <- markdownHeader
-    divider
+    _ <- divider
     body <- markdownBody
     return $ ParsedPost header body
 

@@ -68,6 +68,7 @@ getNPosts n = runDb $
     selectList ([] :: [Filter Post]) [LimitTo n, Desc PostCreated]
 
 
+
 getPostBySlug :: String -> IO (Maybe (Entity Post))
 getPostBySlug s = runDb $ getBy $ UniqueSlug s
 
