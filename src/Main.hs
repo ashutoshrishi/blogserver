@@ -22,7 +22,7 @@ import Network.HTTP.Types.Status (notFound404)
 import Web.Scotty
 import Types
 import Migration
-
+import Auth
 
 main :: IO ()
 main = do
@@ -58,6 +58,7 @@ application env = do
     get "/posts" getPostsA
     get "/post/slug/:slug" getPostBySlugA
     get "/post/id/:id" getPostByIdA
+    post "/login" loginRequestA
     notFound notFoundA
 
 
@@ -88,3 +89,10 @@ notFoundA :: ActionM ()
 notFoundA = do
     status notFound404
     json Null
+
+
+
+loginRequestA :: ActionM ()
+loginRequestA = do
+    req <- request
+    basicAuth req 
